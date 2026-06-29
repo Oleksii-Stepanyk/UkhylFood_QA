@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "customer-gateway.fullname" . }}{{ if .Values.blueGreen.enabled }}-{{ .Values.blueGreen.environment }}{{ end }}
+  labels:
+    {{- include "customer-gateway.labels" . | nindent 4 }}
+    {{- if .Values.blueGreen.enabled }}
+    environment: {{ .Values.blueGreen.environment }}
+    {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "customer-gateway.selectorLabels" . | nindent 4 }}
+    {{- if .Values.blueGreen.enabled }}
+    environment: {{ .Values.blueGreen.environment }}
+    {{- end }}

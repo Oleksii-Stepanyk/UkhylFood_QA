@@ -1,0 +1,21 @@
+{{- if .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "order-service.fullname" . }}-scaledobject
+  labels:
+    app: {{ include "order-service.fullname" . }}
+spec:
+  scaleTargetRef:
+    name: {{ include "order-service.fullname" . }}
+  pollingInterval: {{ .Values.keda.pollingInterval | default 5 }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod | default 30 }}
+  minReplicaCount: {{ .Values.keda.minReplicas | default 1 }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas | default 10 }}
+  triggers:
+    - type: rabbitmq
+      metadata:
+        queueName: {{ .Values.keda.queueName | quote }}
+        queueLength: {{ .Values.keda.queueLength | quote }}
+        host: {{ .Values.keda.host | quote }}
+  {{- end }}

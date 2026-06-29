@@ -1,0 +1,90 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: food-delivery-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Environment: $environment";
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: api.food-delivery.local
+    http:
+      paths:
+      - path: /customer
+        pathType: Prefix
+        backend:
+          service:
+            name: team2-customer-gateway-active
+            port:
+              number: 8080
+      - path: /courier
+        pathType: Prefix
+        backend:
+          service:
+            name: team2-courier-gateway-active
+            port:
+              number: 8080
+      - path: /restaurant
+        pathType: Prefix
+        backend:
+          service:
+            name: team2-restaurant-gateway-active
+            port:
+              number: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: team2-customer-gateway-active
+  labels:
+    app: customer-gateway
+    environment: active
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: customer-gateway
+    environment: green
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: team2-courier-gateway-active
+  labels:
+    app: courier-gateway
+    environment: active
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: courier-gateway
+    environment: green
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: team2-restaurant-gateway-active
+  labels:
+    app: restaurant-gateway
+    environment: active
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: restaurant-gateway
+    environment: green 

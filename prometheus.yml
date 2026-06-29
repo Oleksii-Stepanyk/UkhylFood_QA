@@ -1,0 +1,43 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:8080'] 
+
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-service:8080']
+
+  - job_name: 'restaurant-service'
+    static_configs:
+      - targets: [ 'restaurant-service:8080' ]
+
+  - job_name: 'payment-service'
+    static_configs:
+      - targets: ['payment-service:8080']
+    
+  - job_name: 'customer-service'
+    static_configs:
+      - targets: ['customer-service:8080']
+
+  - job_name: 'courier-service'
+    static_configs:
+      - targets: ['courier-service:8080']
+
+  - job_name: 'customer-gateway'
+    static_configs:
+      - targets: ['customer-gateway:8080']
+  
+  - job_name: 'restaurant-gateway'
+    static_configs:
+      - targets: ['restaurant-gateway:8080']
+
+  - job_name: 'courier-gateway'
+    static_configs:
+      - targets: ['courier-gateway:8080']

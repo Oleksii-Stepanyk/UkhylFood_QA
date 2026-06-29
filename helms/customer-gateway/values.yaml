@@ -1,0 +1,40 @@
+replicaCount: 1
+
+image:
+  repository: customer-gateway
+  pullPolicy: Always
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+blueGreen:
+  enabled: false
+  environment: green
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+env:
+  - name: ASPNETCORE_ENVIRONMENT
+    value: "Development"
+  - name: RabbitMQ__HostName
+    value: rabbitmq
+  - name: OTLP_ENDPOINT_URL
+    value: http://jaeger-collector:4317
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

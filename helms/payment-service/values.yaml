@@ -1,0 +1,40 @@
+replicaCount: 1
+
+image:
+  repository: payment-service
+  pullPolicy: Always
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+env:
+  - name: ASPNETCORE_ENVIRONMENT
+    value: "Development"
+  - name: RabbitMQ__HostName
+    value: "rabbitmq"
+  - name: ConnectionStrings__DefaultConnection
+    value: "Host=team2-payment-db;Database=payment_db;Username=payment_user;Password=payment_pass;"
+  - name: ConnectionStrings__Redis
+    value: "redis-headless:6379"
+  - name: OTLP_ENDPOINT_URL
+    value: "http://jaeger-collector:4317"
+    
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

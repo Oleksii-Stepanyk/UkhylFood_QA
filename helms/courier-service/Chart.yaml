@@ -1,0 +1,6 @@
+apiVersion: v2
+name: courier-service
+description: A Helm chart for Courier Service
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

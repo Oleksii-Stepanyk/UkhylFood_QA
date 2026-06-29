@@ -1,0 +1,422 @@
+services:
+  consul:
+    image: hashicorp/consul:latest
+    container_name: KSE.DistributedSystems.Consul
+    ports:
+      - "8500:8500"
+    healthcheck:
+      test: [ "CMD", "consul", "info" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+
+  redis:
+    image: redis:latest
+    container_name: KSE.DistributedSystems.Redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+
+  rabbitmq:
+    image: kse.distributedsystems.rabbitmq
+    container_name: KSE.DistributedSystems.RabbitMQ
+    build:
+      context: .
+      dockerfile: rabbitmq/Dockerfile
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_port_connectivity" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
+  customer-db:
+    image: postgres:15-alpine
+    container_name: KSE.DistributedSystems.CustomerDb
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: customer-db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+  
+  courier-db:
+    image: postgres:15-alpine
+    container_name: KSE.DistributedSystems.CourierDb
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: courier-db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+  
+  order-db:
+    image: postgres:15-alpine
+    container_name: KSE.DistributedSystems.OrderDb
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: order-db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+
+  restaurant-db:
+    image: postgres:15-alpine
+    container_name: KSE.DistributedSystems.RestaurantDb
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: restaurant-db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+
+  courier-gateway:
+    image: kse.distributedsystems.couriergateway
+    container_name: KSE.DistributedSystems.CourierGateway
+    build:
+      context: .
+      dockerfile: src/KSE.DistributedSystems.CourierGateway/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      consul:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Consul__Host=consul
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+
+  customer-gateway:
+    image: kse.distributedsystems.customergateway
+    container_name: KSE.DistributedSystems.CustomerGateway
+    build:
+      context: .
+      dockerfile: src/KSE.DistributedSystems.CustomerGateway/Dockerfile
+    ports:
+      - "8081:8080"
+    depends_on:
+      consul:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Consul__Host=consul
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+
+  restaurant-gateway:
+    image: kse.distributedsystems.restaurantgateway
+    container_name: KSE.DistributedSystems.RestaurantGateway
+    build:
+      context: .
+      dockerfile: src/KSE.DistributedSystems.RestaurantGateway/Dockerfile
+    ports:
+      - "8082:8080"
+    depends_on:
+      consul:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Consul__Host=consul
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+
+  courier-service:
+    image: kse.distributedsystems.courierservice
+    container_name: KSE.DistributedSystems.CourierService
+    build:
+      context: .
+      dockerfile: src/KSE.DistributedSystems.CourierService/Dockerfile
+    ports:
+      - "8083:8080"
+    depends_on:
+      consul:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      courier-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DbContext=Host=courier-db;Port=5432;Database=courier-db;Username=user;Password=password
+      - ConnectionStrings__Redis=redis:6379
+      - Consul__Host=consul
+      - RabbitMQ__Host=amqp://guest:guest@rabbitmq:5672
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+
+  customer-service:
+    image: kse.distributedsystems.customerservice
+    container_name: KSE.DistributedSystems.CustomerService
+    build:
+      context: .
+      dockerfile: src/KSE.DistributedSystems.CustomerService/Dockerfile
+    ports:
+      - "8084:8080"
+    depends_on:
+      consul:
+        condition: service_healthy
+      customer-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DbContext=Host=customer-db;Port=5432;Database=customer-db;Username=user;Password=password
+      - ConnectionStrings__Redis=redis:6379
+      - Consul__Host=consul
+      - RabbitMQ__Host=amqp://guest:guest@rabbitmq:5672
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+
+  notification-service:
+    image: kse.distributedsystems.notificationservice
+    container_name: KSE.DistributedSystems.NotificationService
+    build:
+      context: .
+      dockerfile: src/KSE.DistributedSystems.NotificationService/Dockerfile
+    ports:
+      - "8085:8080"
+    depends_on:
+      consul:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - Consul__Host=consul
+      - OTLP_ENDPOINT_URL=http://jaeger:4317
+      - RabbitMQ__Host=amqp://guest:guest@rabbitmq:5672
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+
+  order-service:
+    image: kse.distributedsystems.orderservice
+    container_name: KSE.DistributedSystems.OrderService
+    build:
+      context: .
+      dockerfile: src/KSE.DistributedSystems.OrderService/Dockerfile
+    ports:
+      - "8086:8080"
+    depends_on:
+      consul:
+        condition: service_healthy
+      order-db:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__OrderServiceDb=Host=order-db;Port=5432;Database=order-db;Username=user;Password=password
+      - RabbitMQ__Host=amqp://guest:guest@rabbitmq:5672
+      - Consul__Host=consul
+      - OTLP_ENDPOINT_URL=http://jaeger:4317
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+
+  payment-service:
+    image: kse.distributedsystems.paymentservice
+    container_name: KSE.DistributedSystems.PaymentService
+    build:
+      context: .
+      dockerfile: src/KSE.DistributedSystems.PaymentService/Dockerfile
+    ports:
+      - "8087:8080"
+    depends_on:
+      consul:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__Redis=redis:6379
+      - Consul__Host=consul
+      - RabbitMQ__Host=amqp://guest:guest@rabbitmq:5672
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+  
+  restaurant-service:
+    image: kse.distributedsystems.restaurantservice
+    container_name: KSE.DistributedSystems.RestaurantService
+    build:
+      context: .
+      dockerfile: src/KSE.DistributedSystems.RestaurantService/Dockerfile
+    ports:
+      - "8088:8080"
+    depends_on:
+      consul:
+        condition: service_healthy
+      restaurant-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__RestaurantServiceDb=Host=restaurant-db;Port=5432;Database=restaurant-db;Username=user;Password=password
+      - RabbitMQ__Host=amqp://guest:guest@rabbitmq:5672
+      - Consul__Host=consul
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: KSE.DistributedSystems.Prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: KSE.DistributedSystems.Grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - app-network
+
+  jaeger:
+    image: jaegertracing/jaeger:2.0.0
+    container_name: KSE.DistributedSystems.Jaeger
+    command:
+        - "--set=receivers.otlp.protocols.http.endpoint=0.0.0.0:4318"
+        - "--set=receivers.otlp.protocols.grpc.endpoint=0.0.0.0:4317"
+    ports:
+        - "5778:5778"     # Agent config UI
+        - "16686:16686"   # Jaeger UI
+        - "4317:4317"     # OTLP/gRPC
+        - "4318:4318"     # OTLP/HTTP
+        - "14250:14250"   # gRPC for collectors
+        - "14268:14268"   # HTTP for collectors
+        - "9411:9411"     # Zipkin-compatible
+    networks:
+      - app-network
+
+volumes:
+  grafana-storage:
+
+networks:
+  app-network:
+    driver: bridge

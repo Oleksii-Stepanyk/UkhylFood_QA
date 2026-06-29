@@ -1,0 +1,51 @@
+replicaCount: 1
+
+image:
+  repository: order-service
+  pullPolicy: Always
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+env:
+  - name: ASPNETCORE_ENVIRONMENT
+    value: "Development"
+  - name: RabbitMQ__HostName
+    value: "rabbitmq"
+  - name: ConnectionStrings__OrderServiceDb
+    value: "Host=team2-order-db;Database=order_db;Username=order_user;Password=order_pass;"
+  - name: RabbitMQ__Host
+    value: "amqp://guest:guest@rabbitmq:5672"
+  - name: OTLP_ENDPOINT_URL
+    value: "http://jaeger-collector:4317"
+    
+keda:
+  enabled: true
+  queueName: "order"
+  queueLength: "5"
+  host: "amqp://guest:guest@rabbitmq:5672"
+
+  pollingInterval: 3
+  cooldownPeriod: 5
+  minReplicas: 1
+  maxReplicas: 5
+    
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

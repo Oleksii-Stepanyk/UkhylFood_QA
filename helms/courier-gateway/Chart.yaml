@@ -1,0 +1,6 @@
+apiVersion: v2
+name: courier-gateway
+description: A Helm chart for Courier Gateway service
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
