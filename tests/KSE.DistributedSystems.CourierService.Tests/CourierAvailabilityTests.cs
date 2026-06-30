@@ -42,20 +42,21 @@ public class CourierAvailabilityTests
     public async Task SetAvailability_ToTrue_UpdatesEntityProperly()
     {
         // arrange
-        var courierId = Guid.NewGuid();
-        var courier = new Courier { Id = courierId, IsAvailable = false }; // starting offline
+        var expectedCourierId = Guid.NewGuid();
+        const bool initialAvailability = false;
+        const bool targetAvailability = true;
 
-        _courierRepoMock.Setup(r => r.GetByIdAsync(courierId)).ReturnsAsync(courier);
+        var courier = new Courier { Id = expectedCourierId, IsAvailable = initialAvailability };
+
+        _courierRepoMock.Setup(r => r.GetByIdAsync(expectedCourierId)).ReturnsAsync(courier);
         _courierRepoMock.Setup(r => r.UpdateAsync(courier)).ReturnsAsync(courier);
 
-        var dto = new CourierAvailabilityUpdateDto { IsAvailable = true };
-
         // act
-        var result = await _courierService.UpdateCourierAvailabilityAsync(courierId, true);
+        var result = await _courierService.UpdateCourierAvailabilityAsync(expectedCourierId, targetAvailability);
 
         // assert
         Assert.True(result);
-        Assert.True(courier.IsAvailable, "Courier should now be online");
+        Assert.Equal(targetAvailability, courier.IsAvailable);
         _courierRepoMock.Verify(r => r.UpdateAsync(courier), Times.Once);
     }
 
@@ -64,15 +65,13 @@ public class CourierAvailabilityTests
     {
         // arrange
         var missingId = Guid.NewGuid();
+        const bool targetAvailability = true;
+
         _courierRepoMock.Setup(r => r.GetByIdAsync(missingId)).ReturnsAsync((Courier)null!);
-        
-        var dto = new CourierAvailabilityUpdateDto { IsAvailable = true };
 
         // act & assert
-        // Weirdly, location update returns false but availability throws. 
-        // We test that behavior here to lock it in.
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _courierService.UpdateCourierAvailabilityAsync(missingId, true)
+            () => _courierService.UpdateCourierAvailabilityAsync(missingId, targetAvailability)
         );
         
         _courierRepoMock.Verify(r => r.UpdateAsync(It.IsAny<Courier>()), Times.Never);
@@ -82,15 +81,16 @@ public class CourierAvailabilityTests
     public async Task SetAvailability_WithEmptyGuid_ThrowsArgumentException()
     {
         // arrange
-        var dto = new CourierAvailabilityUpdateDto { IsAvailable = false };
+        var emptyId = Guid.Empty;
+        const bool targetAvailability = false;
+        const string expectedExceptionMessageFragment = "id cannot be empty";
 
         // act & assert
-        // Guid.Empty should get caught before we even hit the repo
         var ex = await Assert.ThrowsAsync<ArgumentException>(
-            () => _courierService.UpdateCourierAvailabilityAsync(Guid.Empty, false)
+            () => _courierService.UpdateCourierAvailabilityAsync(emptyId, targetAvailability)
         );
         
-        Assert.Contains("id cannot be empty", ex.Message.ToLower());
+        Assert.Contains(expectedExceptionMessageFragment, ex.Message.ToLower());
         _courierRepoMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
     }
 }

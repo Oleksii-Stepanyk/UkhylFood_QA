@@ -42,27 +42,31 @@ public class CourierLocationTests
     public async Task UpdateLocation_WithExistingCourier_UpdatesLocationAndReturnsTrue()
     {
         // arrange
-        var courierId = Guid.NewGuid();
+        var expectedCourierId = Guid.NewGuid();
+        const string expectedFirstName = "Courier";
+        const string expectedLastName = "Six";
+        const double expectedLatitude = 50.4501;
+        const double expectedLongitude = 30.5234;
+
         var existingCourier = new Courier 
         { 
-            Id = courierId, 
-            FirstName = "Courier", 
-            LastName = "Six" 
+            Id = expectedCourierId, 
+            FirstName = expectedFirstName, 
+            LastName = expectedLastName 
         };
 
-        _courierRepoMock.Setup(r => r.GetByIdAsync(courierId)).ReturnsAsync(existingCourier);
+        _courierRepoMock.Setup(r => r.GetByIdAsync(expectedCourierId)).ReturnsAsync(existingCourier);
         _courierRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Courier>())).ReturnsAsync(existingCourier);
 
         // act
-        var result = await _courierService.UpdateCourierLocationAsync(courierId, 50.4501, 30.5234);
+        var result = await _courierService.UpdateCourierLocationAsync(expectedCourierId, expectedLatitude, expectedLongitude);
 
         // assert
         Assert.True(result);
         
-        // make sure the entity got updated before being saved
         Assert.NotNull(existingCourier.CurrentLocation);
-        Assert.Equal(50.4501, existingCourier.CurrentLocation.Latitude);
-        Assert.Equal(30.5234, existingCourier.CurrentLocation.Longitude);
+        Assert.Equal(expectedLatitude, existingCourier.CurrentLocation.Latitude);
+        Assert.Equal(expectedLongitude, existingCourier.CurrentLocation.Longitude);
         
         _courierRepoMock.Verify(r => r.UpdateAsync(existingCourier), Times.Once);
     }
@@ -72,12 +76,14 @@ public class CourierLocationTests
     {
         // arrange
         var nonExistentId = Guid.NewGuid();
+        const double testLatitude = 10.0;
+        const double testLongitude = 10.0;
         
         _courierRepoMock.Setup(r => r.GetByIdAsync(nonExistentId)).ReturnsAsync((Courier)null!);
 
         // act & assert
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _courierService.UpdateCourierLocationAsync(nonExistentId, 10, 10)
+            () => _courierService.UpdateCourierLocationAsync(nonExistentId, testLatitude, testLongitude)
         );
 
         _courierRepoMock.Verify(r => r.UpdateAsync(It.IsAny<Courier>()), Times.Never);
@@ -87,15 +93,18 @@ public class CourierLocationTests
     public async Task UpdateLocation_WhenUpdateFailsInDb_ReturnsFalse()
     {
         // arrange
-        var courierId = Guid.NewGuid();
-        var courier = new Courier { Id = courierId };
+        var expectedCourierId = Guid.NewGuid();
+        const double testLatitude = 12.34;
+        const double testLongitude = 56.78;
 
-        _courierRepoMock.Setup(r => r.GetByIdAsync(courierId)).ReturnsAsync(courier);
+        var courier = new Courier { Id = expectedCourierId };
+
+        _courierRepoMock.Setup(r => r.GetByIdAsync(expectedCourierId)).ReturnsAsync(courier);
         // Simulate a concurrency issue or DB failure on save
         _courierRepoMock.Setup(r => r.UpdateAsync(courier)).ReturnsAsync((Courier)null!);
 
         // act
-        var result = await _courierService.UpdateCourierLocationAsync(courierId, 12.34, 56.78);
+        var result = await _courierService.UpdateCourierLocationAsync(expectedCourierId, testLatitude, testLongitude);
 
         // assert
         Assert.False(result); // handled gracefully

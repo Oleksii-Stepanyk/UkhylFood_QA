@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using AutoMapper;
 using KSE.DistributedSystems.CourierService.BusinessLogic.DTOs;
@@ -18,26 +20,22 @@ namespace KSE.DistributedSystems.CourierService.Tests;
 public class CourierRegistrationTests
 {
     private readonly Mock<ICourierRepository> _courierRepoMock;
+    private readonly Mock<IMapper> _mapperMock;
     private readonly BusinessLogic.Services.CourierService _courierService;
 
     public CourierRegistrationTests()
     {
-        // Set up the basic dependencies we need for the service
         _courierRepoMock = new Mock<ICourierRepository>();
+        _mapperMock = new Mock<IMapper>();
         
         var loggerMock = new Mock<ILogger<BusinessLogic.Services.CourierService>>();
         var endpointProviderMock = new Mock<ISendEndpointProvider>();
         
-        // Grab the mapper from our actual profiles so we test real mapping rules
-        var mapperConfig = new MapperConfiguration(cfg => cfg.AddProfile<CourierProfile>());
-        var mapper = mapperConfig.CreateMapper();
-        
-        // Just use a dummy tracer for the telemetry stuff
         var tracer = Sdk.CreateTracerProviderBuilder().Build().GetTracer("DummyTracer");
 
         _courierService = new BusinessLogic.Services.CourierService(
             _courierRepoMock.Object,
-            mapper,
+            _mapperMock.Object,
             endpointProviderMock.Object,
             loggerMock.Object,
             tracer
@@ -48,14 +46,37 @@ public class CourierRegistrationTests
     public async Task RegisterCourier_WithValidData_ReturnsCorrectReadDto()
     {
         // arrange
+        const string expectedFirstName = "Courier";
+        const string expectedLastName = "Six";
+        const string expectedVehicleType = "Bike";
+        var expectedFullName = $"{expectedFirstName} {expectedLastName}";
+
         var dto = new CourierRegistrationDto
         {
-            FirstName = "Courier",
-            LastName = "Six",
-            VehicleType = "Bike"
+            FirstName = expectedFirstName,
+            LastName = expectedLastName,
+            VehicleType = expectedVehicleType
         };
 
-        // We expect the repo to return the same courier we pass it
+        var courierEntity = new Courier 
+        { 
+            Id = Guid.NewGuid(), 
+            FirstName = expectedFirstName, 
+            LastName = expectedLastName, 
+            VehicleType = Enum.Parse<VehicleType>(expectedVehicleType) 
+        };
+        
+        var readDto = new CourierReadDto
+        {
+            Id = courierEntity.Id,
+            FullName = expectedFullName,
+            VehicleType = expectedVehicleType,
+            CurrentLocation = new GeoPoint(0, 0)
+        };
+
+        _mapperMock.Setup(m => m.Map<Courier>(dto)).Returns(courierEntity);
+        _mapperMock.Setup(m => m.Map<CourierReadDto>(courierEntity)).Returns(readDto);
+
         _courierRepoMock
             .Setup(repo => repo.AddAsync(It.IsAny<Courier>()))
             .ReturnsAsync((Courier c) => c);
@@ -65,8 +86,8 @@ public class CourierRegistrationTests
 
         // assert
         Assert.NotNull(result);
-        Assert.Equal("Courier Six", result.FullName);
-        Assert.Equal("Bike", result.VehicleType);
+        Assert.Equal(expectedFullName, result.FullName);
+        Assert.Equal(expectedVehicleType, result.VehicleType);
         Assert.NotEqual(Guid.Empty, result.Id);
     }
 
@@ -74,14 +95,21 @@ public class CourierRegistrationTests
     public async Task RegisterCourier_WhenRepositoryFails_ThrowsInvalidOperationException()
     {
         // arrange
+        const string expectedFirstName = "Courier";
+        const string expectedLastName = "Seven";
+        const string expectedVehicleType = "Scooter";
+        const string expectedExceptionMessage = "Failed to register courier";
+
         var dto = new CourierRegistrationDto
         {
-            FirstName = "Courier",
-            LastName = "Seven",
-            VehicleType = "Scooter"
+            FirstName = expectedFirstName,
+            LastName = expectedLastName,
+            VehicleType = expectedVehicleType
         };
 
-        // repo returns null simulating a db issue or constraint fail
+        var courierEntity = new Courier { Id = Guid.NewGuid() };
+        _mapperMock.Setup(m => m.Map<Courier>(dto)).Returns(courierEntity);
+
         _courierRepoMock
             .Setup(repo => repo.AddAsync(It.IsAny<Courier>()))
             .ReturnsAsync((Courier)null!);
@@ -91,19 +119,71 @@ public class CourierRegistrationTests
             () => _courierService.RegisterCourierAsync(dto)
         );
         
-        Assert.Contains("Failed to register courier", ex.Message);
+        Assert.Contains(expectedExceptionMessage, ex.Message);
     }
 
     [Fact]
     public async Task RegisterCourier_PassesNullDto_ThrowsArgumentNullException()
     {
+        // arrange
+        CourierRegistrationDto nullDto = null!;
+
         // act & assert
-        // Should explode if someone tries to pass a null dto directly to the service
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => _courierService.RegisterCourierAsync(null!)
+            () => _courierService.RegisterCourierAsync(nullDto)
         );
         
-        // Double check we never even hit the db
         _courierRepoMock.Verify(repo => repo.AddAsync(It.IsAny<Courier>()), Times.Never);
+    }
+    [Fact]
+    public async Task RegisterCourier_WhenMapperFails_ThrowsInvalidOperationException()
+    {
+        // arrange
+        const string expectedFirstName = "Courier";
+        const string expectedLastName = "Six";
+        const string expectedVehicleType = "Bike";
+        const string expectedExceptionMessage = "Failed to create courier from registration data";
+
+        var dto = new CourierRegistrationDto
+        {
+            FirstName = expectedFirstName,
+            LastName = expectedLastName,
+            VehicleType = expectedVehicleType
+        };
+
+        _mapperMock.Setup(m => m.Map<Courier>(dto)).Returns((Courier)null!);
+
+        // act & assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _courierService.RegisterCourierAsync(dto)
+        );
+        
+        Assert.Contains(expectedExceptionMessage, ex.Message);
+        _courierRepoMock.Verify(repo => repo.AddAsync(It.IsAny<Courier>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("A", "Six", "Bike", "First name must be at least 2 characters")]
+    [InlineData("Courier", "A", "Bike", "Last name must be at least 3 characters")]
+    [InlineData("Courier", "Six", "Spaceship", "Invalid value")]
+    public void RegisterCourierDto_InvalidAttributes_FailsValidation(
+        string firstName, string lastName, string vehicleType, string expectedErrorSubstring)
+    {
+        // arrange
+        var dto = new CourierRegistrationDto
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            VehicleType = vehicleType
+        };
+        var context = new ValidationContext(dto);
+        var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+        // act
+        var isValid = Validator.TryValidateObject(dto, context, results, validateAllProperties: true);
+
+        // assert
+        Assert.False(isValid);
+        Assert.Contains(results, r => r.ErrorMessage!.Contains(expectedErrorSubstring));
     }
 }
