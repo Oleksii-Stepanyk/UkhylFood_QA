@@ -412,3 +412,4 @@ FodyWeavers.xsd
 .JustCode
 /k8s-ds-kubeconfig.yaml
 /k8s-manifests
+coveragereport
