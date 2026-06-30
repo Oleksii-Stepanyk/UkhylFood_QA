@@ -10,6 +10,7 @@ using Asp.Versioning;
 namespace KSE.DistributedSystems.PaymentService.API.Controllers;
 
 [ApiController]
+[Microsoft.AspNetCore.Authorization.Authorize]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Produces("application/json")]
