@@ -32,9 +32,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            var consulDescriptors = services.Where(d =>
-                d.ServiceType.FullName?.Contains("Consul") == true ||
-                d.ServiceType.FullName?.Contains("Discovery") == true).ToList();
+            var consulDescriptors = services.Where(descriptor =>
+                descriptor.ServiceType.FullName?.Contains("Consul") == true ||
+                descriptor.ServiceType.FullName?.Contains("Discovery") == true).ToList();
 
             foreach (var descriptor in consulDescriptors)
             {
@@ -42,32 +42,32 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             }
 
             var dbContextOptionsDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<OrderDbContext>));
+                descriptor => descriptor.ServiceType == typeof(DbContextOptions<OrderDbContext>));
             if (dbContextOptionsDescriptor != null)
                 services.Remove(dbContextOptionsDescriptor);
 
             var dbContextDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(OrderDbContext));
+                descriptor => descriptor.ServiceType == typeof(OrderDbContext));
             if (dbContextDescriptor != null)
                 services.Remove(dbContextDescriptor);
 
             var dbContextOptionsBuilderDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(DbContextOptionsBuilder<OrderDbContext>));
+                descriptor => descriptor.ServiceType == typeof(DbContextOptionsBuilder<OrderDbContext>));
             if (dbContextOptionsBuilderDescriptor != null)
                 services.Remove(dbContextOptionsBuilderDescriptor);
 
             var orderRepositoryDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(IOrderRepository));
+                descriptor => descriptor.ServiceType == typeof(IOrderRepository));
             if (orderRepositoryDescriptor != null)
                 services.Remove(orderRepositoryDescriptor);
 
             var invoiceRepositoryDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(IInvoiceRepository));
+                descriptor => descriptor.ServiceType == typeof(IInvoiceRepository));
             if (invoiceRepositoryDescriptor != null)
                 services.Remove(invoiceRepositoryDescriptor);
 
             var paymentRepositoryDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(IPaymentRepository));
+                descriptor => descriptor.ServiceType == typeof(IPaymentRepository));
             if (paymentRepositoryDescriptor != null)
                 services.Remove(paymentRepositoryDescriptor);
 
@@ -80,26 +80,26 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.AddSingleton(mockPaymentRepository.Object);
 
             var redisRegistration = services.SingleOrDefault(
-                d => d.ServiceType == typeof(IConnectionMultiplexer));
+                descriptor => descriptor.ServiceType == typeof(IConnectionMultiplexer));
 
             if (redisRegistration != null)
                 services.Remove(redisRegistration);
 
             var mockConn = new Mock<IConnectionMultiplexer>();
-            mockConn.Setup(m => m.IsConnected).Returns(true);
+            mockConn.Setup(muxer => muxer.IsConnected).Returns(true);
 
             var mockRedisDb = new Mock<IDatabase>();
-            mockConn.Setup(m => m.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(mockRedisDb.Object);
+            mockConn.Setup(muxer => muxer.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(mockRedisDb.Object);
 
             services.AddSingleton(mockConn.Object);
 
-            mockRedisDb.Setup(db => db.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+            mockRedisDb.Setup(database => database.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync((RedisValue)"0");
 
-            mockRedisDb.Setup(db => db.StringIncrementAsync(It.IsAny<RedisKey>(), It.IsAny<long>(), It.IsAny<CommandFlags>()))
+            mockRedisDb.Setup(database => database.StringIncrementAsync(It.IsAny<RedisKey>(), It.IsAny<long>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync(1);
 
-            mockRedisDb.Setup(db => db.KeyExpireAsync(It.IsAny<RedisKey>(), It.IsAny<TimeSpan>(), It.IsAny<CommandFlags>()))
+            mockRedisDb.Setup(database => database.KeyExpireAsync(It.IsAny<RedisKey>(), It.IsAny<TimeSpan>(), It.IsAny<CommandFlags>()))
                 .ReturnsAsync(true);
         });
 

@@ -5,6 +5,7 @@ using Xunit;
 
 namespace KSE.DistributedSystems.OrderService.Tests;
 
+[Trait("Category", "Unit")]
 public class PaymentFailTests : OrderServiceTestBase
 {
     [Fact]
