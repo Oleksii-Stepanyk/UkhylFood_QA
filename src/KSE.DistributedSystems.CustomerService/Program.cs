@@ -168,3 +168,8 @@ app.MapPrometheusScrapingEndpoint();
 app.MapGet("/health", () => Results.Ok("Customer service response"));
 
 await app.RunAsync();
+
+namespace KSE.DistributedSystems.CustomerService
+{
+    public partial class Program;
+}

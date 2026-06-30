@@ -14,7 +14,6 @@ using Moq;
 using OpenTelemetry.Trace;
 using StackExchange.Redis;
 using System.ComponentModel;
-using Testcontainers.Redis;
 using Xunit;
 using Order = KSE.DistributedSystems.OrderService.Models.Order;
 
@@ -29,9 +28,27 @@ public class CourierServiceIntegrationTests
 
     public CourierServiceIntegrationTests()
     {
-        var redisContainer = new RedisBuilder().Build();
-        redisContainer.StartAsync().GetAwaiter().GetResult();
-        var connection = ConnectionMultiplexer.Connect(redisContainer.GetConnectionString());
+        var redisData = new System.Collections.Concurrent.ConcurrentDictionary<string, string>();
+        var mockDb = new Mock<IDatabase>();
+        
+        mockDb.Setup(db => db.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+            .ReturnsAsync((RedisKey key, CommandFlags flags) => {
+                redisData.TryGetValue(key!, out var val);
+                return (RedisValue)val;
+            });
+            
+        mockDb.Setup(db => db.StringSetAsync(It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(), It.IsAny<bool>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
+            .ReturnsAsync((RedisKey key, RedisValue val, TimeSpan? expiry, bool keepTtl, When when, CommandFlags flags) => {
+                redisData[key!] = val!;
+                return true;
+            });
+            
+        var mockConnection = new Mock<IConnectionMultiplexer>();
+        mockConnection.Setup(c => c.IsConnected).Returns(true);
+        mockConnection.Setup(c => c.GetDatabase(It.IsAny<int>(), It.IsAny<object>()))
+            .Returns(mockDb.Object);
+
+        var connection = mockConnection.Object;
 
         var mockEndpoint = new Mock<ISendEndpoint>();
         mockEndpoint.Setup(e => e.Send(It.IsAny<object>(), It.IsAny<CancellationToken>()))

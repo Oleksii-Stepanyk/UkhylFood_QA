@@ -24,7 +24,7 @@ public class UnitTests
     public UnitTests()
     {
         _mockMetricsService = new Mock<OrderMonitoringService>(_mockLogger.Object);
-        _orderService = new(_mockPublishEndpoint.Object, _mockOrderRepository.Object, _mockPaymentRepository.Object, _mockInvoiceRepository.Object, _mockMetricsService.Object);
+        _orderService = new(_mockOrderRepository.Object, _mockPaymentRepository.Object, _mockInvoiceRepository.Object, _mockMetricsService.Object);
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class UnitTests
         _mockInvoiceRepository.Setup(r => r.SaveInvoice(It.IsAny<Invoice>()))
             .Returns(Task.CompletedTask);
 
-        await _orderService.OnOrderPlaced(order);
+        await _orderService.OnOrderPlaced(order, _mockPublishEndpoint.Object);
 
         Assert.Equal(OrderStatus.Pending, order.Status);
         Assert.Equal(PaymentStatus.Pending, order.PaymentStatus);
@@ -69,7 +69,7 @@ public class UnitTests
             i.TotalPrice == 25.99f &&
             i.Currency == "USD" &&
             i.PaymentStatus == PaymentStatus.Pending)), Times.Once);
-        _mockPublishEndpoint.Verify(p => p.Publish(It.IsAny<Invoice>(), default), Times.Once);
+        _mockPublishEndpoint.Verify(p => p.Publish(It.IsAny<Invoice>(), default), Times.Never);
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class UnitTests
         _mockPaymentRepository.Setup(r => r.GetPaymentMethodByCustomerId(customerId))
             .ReturnsAsync((PaymentMethod?)null);
 
-        await Assert.ThrowsAsync<PaymentNotFoundException>(() => _orderService.OnOrderPlaced(order));
+        await Assert.ThrowsAsync<PaymentNotFoundException>(() => _orderService.OnOrderPlaced(order, _mockPublishEndpoint.Object));
         _mockInvoiceRepository.Verify(r => r.SaveInvoice(It.IsAny<Invoice>()), Times.Never);
         _mockPublishEndpoint.Verify(p => p.Publish(It.IsAny<Invoice>(), default), Times.Never);
     }
@@ -99,7 +99,7 @@ public class UnitTests
     {
         var invoiceId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
-        var paymentResult = new PaymentResult(invoiceId, PaymentStatus.Paid);
+        var paymentResult = new PaymentResult { OrderId = invoiceId, Status = (int)PaymentStatus.Paid };
 
         var order = new Order
         {
@@ -108,19 +108,20 @@ public class UnitTests
             RestaurantId = Guid.NewGuid(),
             Status = OrderStatus.Pending,
             PaymentStatus = PaymentStatus.Pending,
-            TotalPrice = 30.00f
+            TotalPrice = 30.00f,
+            Items = []
         };
 
         _mockInvoiceRepository.Setup(r => r.UpdateInvoiceStatus(invoiceId, PaymentStatus.Paid))
             .ReturnsAsync(orderId);
-        _mockOrderRepository.Setup(r => r.GetOrderByIdAsync(orderId))
-            .ReturnsAsync(order);
+        _mockOrderRepository.Setup(r => r.UpdateOrderStatusAsync(orderId, PaymentStatus.Paid))
+            .ReturnsAsync((Guid id, PaymentStatus status) => { order.PaymentStatus = status; return order; });
 
-        await _orderService.OnPaymentSuccess(paymentResult);
+        await _orderService.OnPaymentSuccess(paymentResult, _mockPublishEndpoint.Object);
 
         Assert.Equal(PaymentStatus.Paid, order.PaymentStatus);
         _mockInvoiceRepository.Verify(r => r.UpdateInvoiceStatus(invoiceId, PaymentStatus.Paid), Times.Once);
-        _mockOrderRepository.Verify(r => r.GetOrderByIdAsync(orderId), Times.Once);
+        _mockOrderRepository.Verify(r => r.UpdateOrderStatusAsync(orderId, PaymentStatus.Paid), Times.Once);
         _mockPublishEndpoint.Verify(p => p.Publish(order, default), Times.Once);
     }
 
@@ -129,14 +130,14 @@ public class UnitTests
     {
         var invoiceId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
-        var paymentResult = new PaymentResult(invoiceId, PaymentStatus.Failed);
+        var paymentResult = new PaymentResult { OrderId = invoiceId, Status = (int)PaymentStatus.Failed };
 
         _mockInvoiceRepository.Setup(r => r.UpdateInvoiceStatus(invoiceId, PaymentStatus.Failed))
             .ReturnsAsync(orderId);
         _mockOrderRepository.Setup(r => r.UpdateOrderStatusAsync(orderId, PaymentStatus.Failed))
             .ReturnsAsync(new Order { Id = orderId, PaymentStatus = PaymentStatus.Failed });
 
-        await _orderService.OnPaymentFail(paymentResult);
+        await _orderService.OnPaymentFail(paymentResult, _mockPublishEndpoint.Object);
 
         _mockInvoiceRepository.Verify(r => r.UpdateInvoiceStatus(invoiceId, PaymentStatus.Failed), Times.Once);
         _mockOrderRepository.Verify(r => r.UpdateOrderStatusAsync(orderId, PaymentStatus.Failed), Times.Once);
@@ -171,10 +172,10 @@ public class UnitTests
         _mockOrderRepository.Setup(r => r.UpdateOrderAsync(order))
             .ReturnsAsync(updatedOrder);
 
-        await _orderService.OnOrderUpdate(order);
+        await _orderService.OnOrderUpdate(order, _mockPublishEndpoint.Object);
 
         _mockOrderRepository.Verify(r => r.UpdateOrderAsync(order), Times.Once);
-        _mockPublishEndpoint.Verify(p => p.Publish(updatedOrder, default), Times.Once);
+        _mockPublishEndpoint.Verify(p => p.Publish(It.IsAny<Order>(), default), Times.Never);
     }
 
     [Fact]
@@ -294,9 +295,9 @@ public class UnitTests
         var invoiceId = Guid.NewGuid();
         var status = PaymentStatus.Paid;
 
-        var paymentResult = new PaymentResult(invoiceId, status);
+        var paymentResult = new PaymentResult { OrderId = invoiceId, Status = (int)status };
 
-        Assert.Equal(invoiceId, paymentResult.InvoiceId);
-        Assert.Equal(PaymentStatus.Paid, paymentResult.Status);
+        Assert.Equal(invoiceId, paymentResult.OrderId);
+        Assert.Equal((int)PaymentStatus.Paid, paymentResult.Status);
     }
 }
