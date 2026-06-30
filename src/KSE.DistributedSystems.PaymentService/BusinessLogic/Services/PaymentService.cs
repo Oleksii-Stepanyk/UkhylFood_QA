@@ -393,17 +393,18 @@ public class PaymentService : IPaymentService
         try
         {
             var endpoint = await _sendEndpointProvider.GetSendEndpoint(new Uri("queue:payment.response"));
+
             if (payment.Status == PaymentStatus.Succeeded)
             {
-                await endpoint.Send(new KSE.DistributedSystems.OrderService.Models.PaymentResult(payment.OrderId, 0)); // Paid = 0
+                await endpoint.Send(new KSE.DistributedSystems.OrderService.Models.PaymentResult { OrderId = payment.OrderId, Status = 0 }); // Paid = 0
             }
             else if (payment.Status == PaymentStatus.Failed)
             {
-                await endpoint.Send(new KSE.DistributedSystems.OrderService.Models.PaymentResult(payment.OrderId, 1)); // Failed = 1
+                await endpoint.Send(new KSE.DistributedSystems.OrderService.Models.PaymentResult { OrderId = payment.OrderId, Status = 1 }); // Failed = 1
             }
             else
             {
-                await endpoint.Send(new KSE.DistributedSystems.OrderService.Models.PaymentResult(payment.OrderId, 2)); // Pending = 2
+                await endpoint.Send(new KSE.DistributedSystems.OrderService.Models.PaymentResult { OrderId = payment.OrderId, Status = 2 }); // Pending = 2
             }
         }
         catch (Exception ex)
