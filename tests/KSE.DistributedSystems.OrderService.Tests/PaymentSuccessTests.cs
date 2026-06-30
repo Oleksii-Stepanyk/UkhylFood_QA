@@ -4,6 +4,7 @@ using Xunit;
 
 namespace KSE.DistributedSystems.OrderService.Tests;
 
+[Trait("Category", "Unit")]
 public class PaymentSuccessTests : OrderServiceTestBase
 {
     [Fact]
@@ -70,7 +71,13 @@ public class PaymentSuccessTests : OrderServiceTestBase
         var order = new Order
         {
             Id = orderId,
-            Items = []
+            Items = [
+                new OrderItem
+                {
+                    Id = Guid.NewGuid(),
+                    Orders = [new Order()]
+                }
+            ]
         };
 
         MockInvoiceRepository.Setup(repository =>
@@ -79,6 +86,8 @@ public class PaymentSuccessTests : OrderServiceTestBase
             repository.UpdateOrderStatusAsync(orderId, PaymentStatus.Paid)).ReturnsAsync(order);
 
         await OrderService.OnPaymentSuccess(result, MockPublishEndpoint.Object);
+
+        Assert.Empty(order.Items[0].Orders);
 
         MockPublishEndpoint.Verify(publisher =>
             publisher.Publish(order, default), Times.Once);

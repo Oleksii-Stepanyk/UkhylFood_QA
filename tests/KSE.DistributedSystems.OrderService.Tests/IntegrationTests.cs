@@ -36,9 +36,9 @@ public class IntegrationTests(CustomWebApplicationFactory factory) : BaseApiTest
         };
 
         var mockRepository = Mock.Get(orderRepository);
-        mockRepository.Setup(r => r.CreateOrderAsync(It.IsAny<Order>()))
-            .ReturnsAsync((Order o) => o);
-        mockRepository.Setup(r => r.GetOrderByIdAsync(order.Id))
+        mockRepository.Setup(repo => repo.CreateOrderAsync(It.IsAny<Order>()))
+            .ReturnsAsync((Order orderObj) => orderObj);
+        mockRepository.Setup(repo => repo.GetOrderByIdAsync(order.Id))
             .ReturnsAsync(order);
 
         var createdOrder = await orderRepository.CreateOrderAsync(order);
@@ -86,9 +86,9 @@ public class IntegrationTests(CustomWebApplicationFactory factory) : BaseApiTest
         };
 
         var mockRepository = Mock.Get(orderRepository);
-        mockRepository.Setup(r => r.GetOrderByIdAsync(orderId))
+        mockRepository.Setup(repo => repo.GetOrderByIdAsync(orderId))
             .ReturnsAsync(originalOrder);
-        mockRepository.Setup(r => r.UpdateOrderStatusAsync(orderId, PaymentStatus.Paid))
+        mockRepository.Setup(repo => repo.UpdateOrderStatusAsync(orderId, PaymentStatus.Paid))
             .ReturnsAsync(updatedOrder);
 
         var result = await orderRepository.UpdateOrderStatusAsync(orderId, PaymentStatus.Paid);
@@ -99,7 +99,7 @@ public class IntegrationTests(CustomWebApplicationFactory factory) : BaseApiTest
         Assert.Equal(PaymentStatus.Paid, result.PaymentStatus);
         Assert.Equal(OrderStatus.Pending, result.Status); 
 
-        mockRepository.Verify(r => r.UpdateOrderStatusAsync(orderId, PaymentStatus.Paid), Times.Once);
+        mockRepository.Verify(repo => repo.UpdateOrderStatusAsync(orderId, PaymentStatus.Paid), Times.Once);
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class IntegrationTests(CustomWebApplicationFactory factory) : BaseApiTest
         };
 
         var mockRepository = Mock.Get(paymentRepository);
-        mockRepository.Setup(r => r.GetPaymentMethodByCustomerId(customerId))
+        mockRepository.Setup(repo => repo.GetPaymentMethodByCustomerId(customerId))
             .ReturnsAsync(expectedPaymentMethod);
 
         var result = await paymentRepository.GetPaymentMethodByCustomerId(customerId);
@@ -131,7 +131,7 @@ public class IntegrationTests(CustomWebApplicationFactory factory) : BaseApiTest
         Assert.Equal("Visa ending in 1234", result.Details);
         Assert.True(result.IsDefault);
 
-        mockRepository.Verify(r => r.GetPaymentMethodByCustomerId(customerId), Times.Once);
+        mockRepository.Verify(repo => repo.GetPaymentMethodByCustomerId(customerId), Times.Once);
     }
 
     [Fact]
@@ -144,13 +144,13 @@ public class IntegrationTests(CustomWebApplicationFactory factory) : BaseApiTest
         var expectedReturnId = Guid.NewGuid();
 
         var mockRepository = Mock.Get(invoiceRepository);
-        mockRepository.Setup(r => r.UpdateInvoiceStatus(invoiceId, PaymentStatus.Paid))
+        mockRepository.Setup(repo => repo.UpdateInvoiceStatus(invoiceId, PaymentStatus.Paid))
             .ReturnsAsync(expectedReturnId);
 
         var result = await invoiceRepository.UpdateInvoiceStatus(invoiceId, PaymentStatus.Paid);
 
         Assert.Equal(expectedReturnId, result);
 
-        mockRepository.Verify(r => r.UpdateInvoiceStatus(invoiceId, PaymentStatus.Paid), Times.Once);
+        mockRepository.Verify(repo => repo.UpdateInvoiceStatus(invoiceId, PaymentStatus.Paid), Times.Once);
     }
 }

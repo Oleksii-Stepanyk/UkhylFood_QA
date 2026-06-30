@@ -5,6 +5,7 @@ using Xunit;
 
 namespace KSE.DistributedSystems.OrderService.Tests;
 
+[Trait("Category", "Unit")]
 public class OrderPlacementTests : OrderServiceTestBase
 {
     [Fact]
@@ -86,6 +87,7 @@ public class OrderPlacementTests : OrderServiceTestBase
                 invoice.OrderId == order.Id &&
                 invoice.CustomerId == order.CustomerId &&
                 invoice.TotalPrice == order.TotalPrice &&
+                invoice.Currency == "USD" &&
                 invoice.PaymentStatus == PaymentStatus.Pending)), Times.Once);
     }
 }
