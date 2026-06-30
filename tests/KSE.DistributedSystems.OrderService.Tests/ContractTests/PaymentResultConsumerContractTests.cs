@@ -25,12 +25,12 @@ public class PaymentResultConsumerContractTests : IAsyncLifetime
     public PaymentResultConsumerContractTests()
     {
         _harness = new InMemoryTestHarness();
-        
+
         _mockOrderService = new Mock<IOrderService>();
         _mockLogger = new Mock<ILogger<PaymentResultConsumer>>();
         _mockMonitoringLogger = new Mock<ILogger<OrderMonitoringService>>();
         _metricsService = new OrderMonitoringService(_mockMonitoringLogger.Object);
-        
+
         _consumerHarness = _harness.Consumer(() => new PaymentResultConsumer(
             _mockLogger.Object,
             _mockOrderService.Object,
@@ -53,17 +53,17 @@ public class PaymentResultConsumerContractTests : IAsyncLifetime
     {
         // Arrange
         var orderId = Guid.NewGuid();
-        var contractMessage = new PaymentResult { OrderId = orderId, Status = PaymentResultStatus.Paid };
+        var contractMessage = new PaymentResult { OrderId = orderId, Status = (int)PaymentStatus.Paid };
 
         // Act
         await _harness.InputQueueSendEndpoint.Send(contractMessage);
 
         // Assert contract
-        Assert.That(await _consumerHarness.Consumed.Any<PaymentResult>(), Is.True);
-        
-        _mockOrderService.Verify(s => s.OnPaymentSuccess(
-            It.Is<PaymentResult>(r => r.OrderId == orderId && r.Status == PaymentResultStatus.Paid), 
-            It.IsAny<MassTransit.ConsumeContext<PaymentResult>>()), 
+        Assert.True(await _consumerHarness.Consumed.Any<PaymentResult>());
+
+        _mockOrderService.Verify(service => service.OnPaymentSuccess(
+            It.Is<PaymentResult>(result => result.OrderId == orderId && result.Status == (int)PaymentStatus.Paid),
+            It.IsAny<MassTransit.ConsumeContext<PaymentResult>>()),
             Times.Once);
     }
 }

@@ -3,6 +3,7 @@ using KSE.DistributedSystems.OrderService.DTOs;
 using KSE.DistributedSystems.OrderService.Exceptions;
 using KSE.DistributedSystems.OrderService.Models;
 using KSE.DistributedSystems.OrderService.Services.Interfaces;
+using KSE.DistributedSystems.NotificationService.Models;
 using MassTransit;
 using System.Diagnostics;
 
@@ -28,18 +29,18 @@ public class OrderService : IOrderService
     {
         var stopwatch = Stopwatch.StartNew();
         var success = false;
-        
+
         try
         {
             Console.WriteLine($"[OnOrderPlaced] Starting for order {order.Id}");
             order.Status = OrderStatus.Pending;
             order.PaymentStatus = PaymentStatus.Pending;
-            
+
             Console.WriteLine($"[OnOrderPlaced] Calling CreateOrderAsync...");
             var created = await _orderRepository.CreateOrderAsync(order);
             Console.WriteLine($"[OnOrderPlaced] Order created in repository. Fetching payment method for {created.CustomerId}...");
 
-            var paymentMethod = await _paymentRepository.GetPaymentMethodByCustomerId(created.CustomerId) 
+            var paymentMethod = await _paymentRepository.GetPaymentMethodByCustomerId(created.CustomerId)
                 ?? throw new PaymentNotFoundException();
             Console.WriteLine($"[OnOrderPlaced] Payment method found. Saving invoice...");
 
@@ -54,8 +55,15 @@ public class OrderService : IOrderService
                 PaymentStatus = PaymentStatus.Pending
             };
             await _invoices.SaveInvoice(invoice);
-            Console.WriteLine($"[OnOrderPlaced] Invoice saved. Returning...");
-            
+            Console.WriteLine($"[OnOrderPlaced] Invoice saved. Publishing OrderCreated event...");
+
+            await publishEndpoint.Publish(new OrderCreated
+            {
+                Email = paymentMethod.Details ?? "customer@example.com",
+                OrderId = created.Id.ToString()
+            });
+            Console.WriteLine($"[OnOrderPlaced] OrderCreated event published.");
+
             success = true;
             _metricsService.IncrementOrderProcessed("order_placed", order.Status.ToString(), order.PaymentStatus.ToString());
         }
@@ -70,7 +78,7 @@ public class OrderService : IOrderService
     {
         var stopwatch = Stopwatch.StartNew();
         var success = false;
-        
+
         try
         {
             var orderId = await _invoices.UpdateInvoiceStatus(result.OrderId, (PaymentStatus)result.Status);
@@ -79,7 +87,7 @@ public class OrderService : IOrderService
 
             order.Items.ForEach(i => i.Orders = []);
             await publishEndpoint.Publish(order);
-            
+
             success = true;
             _metricsService.IncrementOrderProcessed("payment_success", order.Status.ToString(), order.PaymentStatus.ToString());
         }
@@ -94,16 +102,16 @@ public class OrderService : IOrderService
     {
         var stopwatch = Stopwatch.StartNew();
         var success = false;
-        
+
         try
         {
             var orderId = await _invoices.UpdateInvoiceStatus(result.OrderId, (PaymentStatus)result.Status);
 
             await _orderRepository.UpdateOrderStatusAsync(orderId, PaymentStatus.Failed);
 
-            var failedPayment = new PaymentFailed(orderId);
+            var failedPayment = new DTOs.PaymentFailed(orderId);
             await publishEndpoint.Publish(failedPayment);
-            
+
             success = true;
             _metricsService.IncrementOrderProcessed("payment_failed", "unknown", PaymentStatus.Failed.ToString());
         }
@@ -118,14 +126,10 @@ public class OrderService : IOrderService
     {
         var stopwatch = Stopwatch.StartNew();
         var success = false;
-        
+
         try
         {
             var updated = await _orderRepository.UpdateOrderAsync(updateOrder);
-
-            // Removed `await publishEndpoint.Publish(updated);` to prevent infinite event loops.
-            // Other services already listen to the original event published by Restaurant/Courier services.
-            
             success = true;
             _metricsService.IncrementOrderProcessed("order_update", updated.Status.ToString(), updated.PaymentStatus.ToString());
         }
