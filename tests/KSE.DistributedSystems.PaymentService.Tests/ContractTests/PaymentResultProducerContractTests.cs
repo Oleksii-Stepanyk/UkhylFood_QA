@@ -1,3 +1,4 @@
+using Xunit;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -7,7 +8,7 @@ using MassTransit.Testing;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Moq;
-using NUnit.Framework;
+using Xunit;
 using KSE.DistributedSystems.PaymentService.BusinessLogic.DTOs;
 using KSE.DistributedSystems.PaymentService.BusinessLogic.Interfaces;
 using KSE.DistributedSystems.PaymentService.BusinessLogic.MappingProfiles;
@@ -17,9 +18,8 @@ using KSE.DistributedSystems.PaymentService.DataAccess.Interfaces;
 
 namespace KSE.DistributedSystems.PaymentService.Tests.ContractTests
 {
-    [TestFixture]
-    [Category("Contract")]
-    public class PaymentResultProducerContractTests
+    [Trait("Category", "Contract")]
+    public class PaymentResultProducerContractTests : IAsyncLifetime
     {
         private InMemoryTestHarness _harness;
         private Mock<IPaymentRepository> _repositoryMock;
@@ -31,8 +31,7 @@ namespace KSE.DistributedSystems.PaymentService.Tests.ContractTests
         private IMapper _mapper;
         private BusinessLogic.Services.PaymentService _paymentService;
 
-        [SetUp]
-        public async Task Setup()
+        public async Task InitializeAsync()
         {
             _harness = new InMemoryTestHarness();
             await _harness.Start();
@@ -63,15 +62,14 @@ namespace KSE.DistributedSystems.PaymentService.Tests.ContractTests
                 monitorService);
         }
 
-        [TearDown]
-        public async Task TearDown()
+        public async Task DisposeAsync()
         {
             _memoryCache?.Dispose();
             await _harness.Stop();
             _harness.Dispose();
         }
 
-        [Test]
+        [Fact]
         public async Task ProcessPaymentAsync_ShouldSendPaymentResultContract()
         {
             // Arrange
@@ -117,7 +115,7 @@ namespace KSE.DistributedSystems.PaymentService.Tests.ContractTests
             await _paymentService.ProcessPaymentAsync(request);
 
             // Assert contract
-            Assert.That(await _harness.Sent.Any<KSE.DistributedSystems.OrderService.Models.PaymentResult>(), Is.True);
+            Assert.True(await _harness.Sent.Any<KSE.DistributedSystems.OrderService.Models.PaymentResult>());
         }
     }
 }

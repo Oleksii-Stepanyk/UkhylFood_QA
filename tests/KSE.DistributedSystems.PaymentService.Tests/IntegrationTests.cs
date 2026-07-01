@@ -73,7 +73,7 @@ public class IntegrationTests
             disposable.Dispose();
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentProcessingFlow_EndToEnd_ShouldWorkCorrectly()
     {
         var paymentRequest = new PaymentRequestDto
@@ -130,7 +130,7 @@ public class IntegrationTests
         }
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentCaching_ShouldWorkCorrectly()
     {
         var paymentRequest = new PaymentRequestDto
@@ -166,7 +166,7 @@ public class IntegrationTests
         cachedValue.Should().NotBeNull();
     }
 
-    [Test]
+    [Fact]
     public async Task RefundProcessing_ShouldWorkCorrectly()
     {
         var paymentRequest = new PaymentRequestDto
@@ -213,7 +213,7 @@ public class IntegrationTests
         }
     }
 
-    [Test]
+    [Fact]
     public async Task ConcurrentPaymentProcessing_ShouldHandleDuplicates()
     {
         var orderId = Guid.NewGuid();
@@ -261,7 +261,7 @@ public class IntegrationTests
             .WithMessage($"Payment already exists for order {orderId}");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentStatusUpdate_ShouldWorkCorrectly()
     {
         var paymentRequest = new PaymentRequestDto
@@ -297,7 +297,7 @@ public class IntegrationTests
         updatedPayment?.FailureReason.Should().Be("Test failure reason");
     }
 
-    [Test]
+    [Fact]
     public async Task CustomerPaymentHistory_ShouldWorkCorrectly()
     {
         var customerId = Guid.NewGuid();

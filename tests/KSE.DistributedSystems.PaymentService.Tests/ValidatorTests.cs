@@ -19,7 +19,7 @@ public class ValidatorTests
         _paymentCardValidator = new PaymentCardValidator();
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentRequestValidator_ValidRequest_ShouldPass()
     {
         var request = new PaymentRequestDto
@@ -45,7 +45,7 @@ public class ValidatorTests
         result.Errors.Should().BeEmpty();
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentRequestValidator_InvalidAmount_ShouldFail()
     {
         var request = new PaymentRequestDto
@@ -63,7 +63,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "Amount");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentRequestValidator_ExcessiveAmount_ShouldFail()
     {
         var request = new PaymentRequestDto
@@ -81,7 +81,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "Amount" && e.ErrorMessage.Contains("cannot exceed"));
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentRequestValidator_InvalidCurrency_ShouldFail()
     {
         var request = new PaymentRequestDto
@@ -99,7 +99,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "Currency");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentRequestValidator_EmptyOrderId_ShouldFail()
     {
         var request = new PaymentRequestDto
@@ -117,7 +117,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "OrderId");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentRequestValidator_CreditCardWithoutDetails_ShouldFail()
     {
         var request = new PaymentRequestDto
@@ -136,7 +136,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "CardDetails");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentCardValidator_ValidCard_ShouldPass()
     {
         var cardDto = new PaymentCardDto
@@ -154,7 +154,7 @@ public class ValidatorTests
         result.Errors.Should().BeEmpty();
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentCardValidator_InvalidCardNumber_ShouldFail()
     {
         var cardDto = new PaymentCardDto
@@ -172,7 +172,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "CardNumber");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentCardValidator_InvalidExpiryMonth_ShouldFail()
     {
         var cardDto = new PaymentCardDto
@@ -190,7 +190,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "ExpiryMonth");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentCardValidator_ExpiredCard_ShouldFail()
     {
         var cardDto = new PaymentCardDto
@@ -208,7 +208,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "ExpiryYear");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentCardValidator_InvalidCvv_ShouldFail()
     {
         var cardDto = new PaymentCardDto
@@ -226,7 +226,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "Cvv");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentCardValidator_ShortCardholderName_ShouldFail()
     {
         var cardDto = new PaymentCardDto
@@ -244,7 +244,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "CardholderName");
     }
 
-    [Test]
+    [Fact]
     public async Task RefundRequestValidator_ValidRequest_ShouldPass()
     {
         var request = new RefundRequestDto
@@ -260,7 +260,7 @@ public class ValidatorTests
         result.Errors.Should().BeEmpty();
     }
 
-    [Test]
+    [Fact]
     public async Task RefundRequestValidator_EmptyPaymentId_ShouldFail()
     {
         var request = new RefundRequestDto
@@ -276,7 +276,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "PaymentId");
     }
 
-    [Test]
+    [Fact]
     public async Task RefundRequestValidator_InvalidAmount_ShouldFail()
     {
         var request = new RefundRequestDto
@@ -292,7 +292,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "Amount");
     }
 
-    [Test]
+    [Fact]
     public async Task RefundRequestValidator_LongReason_ShouldFail()
     {
         var request = new RefundRequestDto
@@ -308,7 +308,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "Reason");
     }
 
-    [Test]
+    [Fact]
     public async Task RefundRequestValidator_NullAmountAndReason_ShouldPass()
     {
         var request = new RefundRequestDto
@@ -324,7 +324,7 @@ public class ValidatorTests
         result.Errors.Should().BeEmpty();
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentRequestValidator_PayPalWithoutCardDetails_ShouldPass()
     {
         var request = new PaymentRequestDto
@@ -343,7 +343,7 @@ public class ValidatorTests
         result.Errors.Should().BeEmpty();
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentCardValidator_EmptyCardNumber_ShouldFail()
     {
         var cardDto = new PaymentCardDto
@@ -361,7 +361,7 @@ public class ValidatorTests
         result.Errors.Should().Contain(e => e.PropertyName == "CardNumber");
     }
 
-    [Test]
+    [Fact]
     public async Task PaymentCardValidator_FourDigitCvv_ShouldPass()
     {
         var cardDto = new PaymentCardDto

@@ -65,7 +65,7 @@ public class PaymentServiceUnitTests
         _memoryCache?.Dispose();
     }
 
-    [Test]
+    [Fact]
     public async Task ProcessPaymentAsync_ValidRequest_ShouldReturnSuccessResponse()
     {
         var request = new PaymentRequestDto
@@ -116,7 +116,7 @@ public class PaymentServiceUnitTests
         _processorMock.Verify(x => x.ProcessAsync(It.IsAny<Payment>()), Times.Once);
     }
 
-    [Test]
+    [Fact]
     public async Task ProcessPaymentAsync_DuplicatePayment_ShouldThrowInvalidOperationException()
     {
         var request = new PaymentRequestDto
@@ -144,7 +144,7 @@ public class PaymentServiceUnitTests
             .WithMessage($"Payment already exists for order {request.OrderId}");
     }
 
-    [Test]
+    [Fact]
     public async Task ProcessPaymentAsync_ProcessorFailure_ShouldReturnFailedStatus()
     {
         var request = new PaymentRequestDto
@@ -192,7 +192,7 @@ public class PaymentServiceUnitTests
         result.FailureReason.Should().Be("Card declined");
     }
 
-    [Test]
+    [Fact]
     public async Task GetPaymentAsync_ValidId_ShouldReturnPayment()
     {
         var paymentId = Guid.NewGuid();
@@ -217,7 +217,7 @@ public class PaymentServiceUnitTests
         result?.Status.Should().Be(PaymentStatus.Succeeded);
     }
 
-    [Test]
+    [Fact]
     public async Task GetPaymentAsync_InvalidId_ShouldReturnNull()
     {
         var paymentId = Guid.NewGuid();
@@ -230,7 +230,7 @@ public class PaymentServiceUnitTests
         result.Should().BeNull();
     }
 
-    [Test]
+    [Fact]
     public async Task GetPaymentAsync_EmptyId_ShouldThrowArgumentException()
     {
         var act = async () => await _paymentService.GetPaymentAsync(Guid.Empty);
@@ -239,7 +239,7 @@ public class PaymentServiceUnitTests
             .WithMessage("Payment ID cannot be empty*");
     }
 
-    [Test]
+    [Fact]
     public async Task GetPaymentByOrderIdAsync_ValidOrderId_ShouldReturnPayment()
     {
         var orderId = Guid.NewGuid();
@@ -264,7 +264,7 @@ public class PaymentServiceUnitTests
         result?.Status.Should().Be(PaymentStatus.Succeeded);
     }
 
-    [Test]
+    [Fact]
     public async Task RefundPaymentAsync_ValidRequest_ShouldReturnRefundedPayment()
     {
         var paymentId = Guid.NewGuid();
@@ -309,7 +309,7 @@ public class PaymentServiceUnitTests
         _processorMock.Verify(x => x.RefundAsync(It.IsAny<Payment>(), 50.00m), Times.Once);
     }
 
-    [Test]
+    [Fact]
     public async Task RefundPaymentAsync_InvalidPaymentStatus_ShouldThrowInvalidOperationException()
     {
         var paymentId = Guid.NewGuid();
@@ -335,7 +335,7 @@ public class PaymentServiceUnitTests
             .WithMessage("Cannot refund payment with status Failed");
     }
 
-    [Test]
+    [Fact]
     public async Task RefundPaymentAsync_ExcessiveAmount_ShouldThrowInvalidOperationException()
     {
         var paymentId = Guid.NewGuid();
@@ -362,7 +362,7 @@ public class PaymentServiceUnitTests
             .WithMessage("Refund amount cannot exceed original payment amount");
     }
 
-    [Test]
+    [Fact]
     public async Task CancelPaymentAsync_ValidPayment_ShouldReturnCancelledPayment()
     {
         var paymentId = Guid.NewGuid();
@@ -399,7 +399,7 @@ public class PaymentServiceUnitTests
         _processorMock.Verify(x => x.CancelAsync(It.IsAny<Payment>()), Times.Once);
     }
 
-    [Test]
+    [Fact]
     public async Task CancelPaymentAsync_InvalidPaymentStatus_ShouldThrowInvalidOperationException()
     {
         var paymentId = Guid.NewGuid();
@@ -418,7 +418,7 @@ public class PaymentServiceUnitTests
             .WithMessage("Cannot cancel payment with status Succeeded");
     }
 
-    [Test]
+    [Fact]
     public async Task UpdatePaymentStatusAsync_ValidRequest_ShouldReturnTrue()
     {
         var paymentId = Guid.NewGuid();
@@ -441,7 +441,7 @@ public class PaymentServiceUnitTests
         _repositoryMock.Verify(x => x.UpdateAsync(It.IsAny<Payment>()), Times.Once);
     }
 
-    [Test]
+    [Fact]
     public async Task UpdatePaymentStatusAsync_PaymentNotFound_ShouldReturnFalse()
     {
         var paymentId = Guid.NewGuid();

@@ -20,7 +20,7 @@ public class PaymentProcessorTests
         _paymentProcessor = new PaymentProcessor(_loggerMock.Object);
     }
 
-    [Test]
+    [Fact]
     public async Task ProcessAsync_SmallAmount_ShouldSucceed()
     {
         var payment = new Payment
@@ -41,7 +41,7 @@ public class PaymentProcessorTests
         result.ProcessorResponse.Should().ContainKey("authorization_code");
     }
 
-    [Test]
+    [Fact]
     public async Task ProcessAsync_VerySmallAmount_ShouldFail()
     {
         var payment = new Payment
@@ -59,7 +59,7 @@ public class PaymentProcessorTests
         result.ErrorMessage.Should().Be("Amount too small for processing");
     }
 
-    [Test]
+    [Fact]
     public async Task RefundAsync_ValidPayment_ShouldSucceed()
     {
         var payment = new Payment
@@ -89,7 +89,7 @@ public class PaymentProcessorTests
         result.ProcessorResponse.Should().ContainKey("refund_id");
     }
 
-    [Test]
+    [Fact]
     public async Task RefundAsync_NullAmount_ShouldRefundFullAmount()
     {
         var payment = new Payment
@@ -108,7 +108,7 @@ public class PaymentProcessorTests
         result.ProcessorResponse.Should().ContainKey("refund_id");
     }
 
-    [Test]
+    [Fact]
     public async Task CancelAsync_ValidPayment_ShouldSucceed()
     {
         var payment = new Payment
@@ -127,7 +127,7 @@ public class PaymentProcessorTests
         result.ProcessorResponse.Should().ContainKey("cancellation_reason");
     }
 
-    [Test]
+    [Fact]
     public async Task ProcessAsync_HighAmount_ShouldHaveVariableSuccess()
     {
         var payment = new Payment
@@ -151,7 +151,7 @@ public class PaymentProcessorTests
         failureCount.Should().BeGreaterThan(0);
     }
 
-    [Test]
+    [Fact]
     public async Task ProcessAsync_NormalAmount_ShouldMostlySucceed()
     {
         var payments = new List<Payment>();
@@ -177,7 +177,7 @@ public class PaymentProcessorTests
         failureRate.Should().BeLessOrEqualTo(0.15);
     }
 
-    [Test]
+    [Fact]
     public async Task ProcessAsync_DifferentPaymentMethods_ShouldReturnCorrectProcessor()
     {
         var creditCardPayment = new Payment
